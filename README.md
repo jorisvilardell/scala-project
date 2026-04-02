@@ -1,25 +1,37 @@
 # Reverse Proxy in Scala
 
-A lightweight reverse proxy built with **http4s** and **Ember**, demonstrating Scala's pattern matching applied to real HTTP routing.
-
-## Concepts covered
-
-- **Pattern Matching on HTTP requests:** method + path deconstruction via http4s DSL
-- **Resource-safe networking:** managed client connections with `cats-effect`
-- **Route-level access control:** blocking patterns via pattern matching
+A lightweight reverse proxy built with **http4s** and **Ember**, with file-based routing configuration.
 
 ## Project structure
 
 ```
-src/main/scala/
-├── ReverseProxy.scala   # Route definitions (pattern matching on requests)
-└── ProxyServer.scala    # Ember HTTP server entry point
+├── routes.conf                    # Routing rules configuration
+└── src/main/scala/
+    ├── RouteConfig.scala          # Config file parser
+    ├── ReverseProxy.scala         # Dynamic route matching & proxying
+    └── ProxyServer.scala          # Entry point
+```
+
+## Configuration
+
+Define routing rules in `routes.conf`:
+
+```conf
+# Format: METHOD PATH TARGET_URL
+# Use * as method to match all HTTP methods
+# Use :param for path parameters
+
+GET   /api/users        https://jsonplaceholder.typicode.com/users
+GET   /api/users/:id    https://jsonplaceholder.typicode.com/users/:id
+
+# Blocked routes (target = DENY)
+*     /admin            DENY
 ```
 
 ## Run
 
 ```bash
-sbt "runMain ProxyServer"
+sbt run
 ```
 
 ## Demo
