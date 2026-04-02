@@ -7,14 +7,22 @@ object ReverseProxy:
 
   def routes(client: Client[IO], rules: List[RouteRule]): HttpRoutes[IO] =
     HttpRoutes.of[IO] { req =>
+      val start = System.currentTimeMillis()
       matchRule(req, rules) match
         case Some(rule) if rule.target == "DENY" =>
-          Forbidden("Access Denied: internal routing only.")
+          ProxyLogger.deny(req.method, req.uri.path) *>
+            Forbidden("Access Denied: internal routing only.")
         case Some(rule) =>
           val targetUri = resolveUri(req, rule)
-          client.run(req.withUri(targetUri)).use(resp => IO.pure(resp))
+          ProxyLogger.proxy(req.method, req.uri.path, targetUri) *>
+            client.run(req.withUri(targetUri)).use { resp =>
+              val duration = System.currentTimeMillis() - start
+              ProxyLogger.response(req.method, req.uri.path, resp.status, duration) *>
+                IO.pure(resp)
+            }
         case None =>
-          NotFound(s"No route for ${req.method} ${req.uri.path}")
+          ProxyLogger.noMatch(req.method, req.uri.path) *>
+            NotFound(s"No route for ${req.method} ${req.uri.path}")
     }
 
   private def matchRule(req: Request[IO], rules: List[RouteRule]): Option[RouteRule] =
